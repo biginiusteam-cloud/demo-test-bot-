@@ -49,17 +49,21 @@ async def broadcast(client: Client, message: Message):
 
     users = [u["user_id"] for u in users_col.find({})]
     count = 0
+
+    # Get text to send (normal message, not forward)
+    if message.reply_to_message:
+        text_to_send = message.reply_to_message.text or message.reply_to_message.caption
+    else:
+        text_to_send = " ".join(message.command[1:])
+
     for uid in users:
         try:
-            if message.reply_to_message:
-                await message.reply_to_message.forward(uid)
-            else:
-                text = " ".join(message.command[1:])
-                await client.send_message(uid, text)
+            await client.send_message(uid, text_to_send)  # broadcast message, NO delete
             count += 1
             await asyncio.sleep(0.05)
         except:
             pass
+
     await message.reply_text(f"📢 Broadcast sent to {count} users.")
 
 # -----------------------------
@@ -70,6 +74,12 @@ async def stats(client: Client, message: Message):
         return await message.reply_text("❌ You are not authorized.")
     total_users = users_col.count_documents({})
     total_messages = db["messages"].count_documents({})
-    await message.reply_text(
+    reply = await message.reply_text(
         f"📊 Bot Stats:\n• Total users: {total_users}\n• Total messages in DB: {total_messages}"
     )
+    # Auto-delete stats message
+    await asyncio.sleep(DELETE_TIMER)
+    try:
+        await reply.delete()
+    except:
+        pass
