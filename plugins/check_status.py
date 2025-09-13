@@ -2,6 +2,8 @@ from pyrogram import Client, filters
 from pyrogram.types import CallbackQuery, Message
 from pymongo import MongoClient, ASCENDING
 from config import Config
+from plugins.admin import DELETE_TIMER  # import admin-set timer
+import asyncio
 
 mongo = MongoClient(Config.MONGO_URL)
 db = mongo["StatusBot"]
@@ -35,13 +37,26 @@ async def receive_unique_id(client: Client, message: Message):
 
     if rec:
         # Send back the exact stored message text
-        await message.reply_text(rec["message_text"], quote=True)
+        reply_msg = await message.reply_text(rec["message_text"], quote=True)
+        # -----------------------------
+        # Auto-delete after DELETE_TIMER seconds
+        await asyncio.sleep(DELETE_TIMER)
+        try:
+            await reply_msg.delete()
+        except:
+            pass
     else:
-        await message.reply_text(
+        reply_msg = await message.reply_text(
             "❌ Sorry, no status found for this ID.\n"
             "Please check your Unique ID and try again.",
             quote=True
         )
+        # Auto-delete even error message
+        await asyncio.sleep(DELETE_TIMER)
+        try:
+            await reply_msg.delete()
+        except:
+            pass
 
     # Clear state
     states_col.update_one(
